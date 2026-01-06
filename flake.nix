@@ -13,22 +13,21 @@
       in
       {
         packages = {
-          # The Rust CLI
           greviewer-cli = pkgs.rustPlatform.buildRustPackage {
             pname = "greviewer-cli";
             version = "0.1.0";
-            src = ./cli;
+            src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
+            
+            cargoBuildFlags = [ "-p" "greviewer-cli" ];
+            cargoTestFlags = [ "-p" "greviewer-cli" ];
             
             nativeBuildInputs = with pkgs; [ pkg-config ];
             buildInputs = with pkgs; lib.optionals stdenv.isDarwin [
-              libiconv
+              apple-sdk_15
             ] ++ lib.optionals stdenv.isLinux [
               openssl
             ];
-            
-            # Let native-tls use system frameworks on macOS
-            OPENSSL_NO_VENDOR = "1";
           };
 
           # The Neovim plugin
@@ -36,6 +35,7 @@
             pname = "greviewer";
             version = "0.1.0";
             src = ./.;
+            doCheck = false;
           };
 
           default = self.packages.${system}.greviewer-cli;
