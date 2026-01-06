@@ -1,0 +1,135 @@
+*greviewer.txt*  GitHub PR reviewer for Neovim
+
+==============================================================================
+CONTENTS                                                   *greviewer-contents*
+
+    1. Introduction ............................ |greviewer-introduction|
+    2. Requirements ............................ |greviewer-requirements|
+    3. Installation ............................ |greviewer-installation|
+    4. Configuration ........................... |greviewer-configuration|
+    5. Commands ................................ |greviewer-commands|
+    6. Functions ............................... |greviewer-functions|
+    7. Keymaps ................................. |greviewer-keymaps|
+
+==============================================================================
+1. INTRODUCTION                                        *greviewer-introduction*
+
+greviewer is a Neovim plugin for reviewing GitHub pull requests directly in
+your editor. It provides:
+
+- Single-buffer inline diff view with gutter indicators
+- Expandable old code preview (toggle to see what was changed)
+- Navigation between changes
+- Add review comments directly from Neovim
+- View existing PR comments inline
+- Telescope integration for file picker
+
+==============================================================================
+2. REQUIREMENTS                                        *greviewer-requirements*
+
+- Neovim >= 0.9.0
+- plenary.nvim (required)
+- telescope.nvim (optional, for file picker)
+- greviewer-cli (Rust CLI tool)
+- GitHub authentication via `gh` CLI or GITHUB_TOKEN
+
+==============================================================================
+3. INSTALLATION                                        *greviewer-installation*
+
+Using lazy.nvim: >lua
+    {
+        "your-username/greviewer",
+        dependencies = { "nvim-lua/plenary.nvim" },
+        config = function()
+            require("greviewer").setup({})
+        end,
+    }
+<
+
+Install the CLI tool: >bash
+    cd /path/to/greviewer
+    cargo install --path cli
+<
+
+Authenticate with GitHub: >bash
+    gh auth login
+<
+
+==============================================================================
+4. CONFIGURATION                                      *greviewer-configuration*
+
+Call setup() with your options: >lua
+    require("greviewer").setup({
+        cli_path = "greviewer-cli",  -- Path to CLI binary
+        signs = {
+            add = "+",
+            delete = "-",
+            change = "~",
+        },
+        wrap_navigation = true,      -- Wrap ]c/[c at file boundaries
+        auto_expand_deletes = false, -- Auto-expand deleted lines
+    })
+<
+
+==============================================================================
+5. COMMANDS                                                *greviewer-commands*
+
+:GReview {url}                                                       *:GReview*
+    Open a PR for review. URL should be a GitHub PR URL like:
+    https://github.com/owner/repo/pull/123
+
+:GReviewClose                                                   *:GReviewClose*
+    Close the current review and clean up buffers.
+
+:GReviewFiles                                                   *:GReviewFiles*
+    Open the Telescope file picker (or fallback) to switch between
+    changed files in the PR.
+
+:GReviewAuth                                                     *:GReviewAuth*
+    Check GitHub authentication status.
+
+==============================================================================
+6. FUNCTIONS                                              *greviewer-functions*
+
+require("greviewer").next_hunk()                         *greviewer.next_hunk()*
+    Jump to the next change in the file.
+
+require("greviewer").prev_hunk()                         *greviewer.prev_hunk()*
+    Jump to the previous change in the file.
+
+require("greviewer").toggle_inline()                 *greviewer.toggle_inline()*
+    Toggle inline preview of old code at cursor position.
+
+require("greviewer").add_comment()                     *greviewer.add_comment()*
+    Add a review comment at the current cursor line.
+
+require("greviewer").show_file_picker()           *greviewer.show_file_picker()*
+    Show the file picker (Telescope or fallback).
+
+==============================================================================
+7. KEYMAPS                                                  *greviewer-keymaps*
+
+greviewer does not set any keymaps by default. Add your own: >lua
+    vim.keymap.set("n", "]c", function()
+        require("greviewer").next_hunk()
+    end, { desc = "Next change" })
+
+    vim.keymap.set("n", "[c", function()
+        require("greviewer").prev_hunk()
+    end, { desc = "Previous change" })
+
+    vim.keymap.set("n", "<CR>", function()
+        require("greviewer").toggle_inline()
+    end, { desc = "Toggle inline diff" })
+
+    vim.keymap.set("n", "<leader>cc", function()
+        require("greviewer").add_comment()
+    end, { desc = "Add comment" })
+
+    vim.keymap.set("n", "<leader>cf", function()
+        require("greviewer").show_file_picker()
+    end, { desc = "Show files" })
+<
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

@@ -1,0 +1,18 @@
+local M = {}
+
+M.values = {
+    cli_path = "greviewer-cli",
+    signs = {
+        add = "+",
+        delete = "-",
+        change = "~",
+    },
+    wrap_navigation = true,
+    auto_expand_deletes = false,
+}
+
+function M.setup(opts)
+    M.values = vim.tbl_deep_extend("force", M.values, opts or {})
+end
+
+return M
