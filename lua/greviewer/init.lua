@@ -12,12 +12,22 @@ function M.setup(opts)
     end
 
     vim.api.nvim_create_user_command("GReview", function(ctx)
-        M.open(ctx.args)
-    end, { nargs = 1, desc = "Open PR review" })
+        local arg = ctx.args
+        if arg and arg ~= "" then
+            local pr_number = tonumber(arg)
+            if pr_number then
+                M.open_with_checkout(pr_number)
+            else
+                M.open_url(arg)
+            end
+        else
+            M.open()
+        end
+    end, { nargs = "?", desc = "Open PR review (no args = current branch, number = checkout PR, URL = legacy)" })
 
-    vim.api.nvim_create_user_command("GReviewClose", function()
-        M.close()
-    end, { desc = "Close PR review" })
+    vim.api.nvim_create_user_command("GReviewDone", function()
+        M.done()
+    end, { desc = "Close review and restore previous state" })
 
     vim.api.nvim_create_user_command("GReviewFiles", function()
         M.show_file_picker()
@@ -28,10 +38,57 @@ function M.setup(opts)
     end, { desc = "Check GitHub authentication" })
 end
 
-function M.open(url)
+function M.open()
     local cli = require("greviewer.cli")
     local state = require("greviewer.state")
-    local buffer = require("greviewer.ui.buffer")
+
+    cli.get_pr_for_branch(function(pr_info, err)
+        if err then
+            vim.notify(err, vim.log.levels.ERROR)
+            return
+        end
+
+        local url = string.format("https://github.com/%s/%s/pull/%d", pr_info.owner, pr_info.repo, pr_info.number)
+        vim.notify(string.format("Found PR #%d: %s", pr_info.number, pr_info.title), vim.log.levels.INFO)
+
+        M.fetch_and_enable(url)
+    end)
+end
+
+function M.open_with_checkout(pr_number)
+    local cli = require("greviewer.cli")
+    local state = require("greviewer.state")
+
+    vim.notify(string.format("Checking out PR #%d...", pr_number), vim.log.levels.INFO)
+
+    cli.checkout_pr(pr_number, function(checkout_info, err)
+        if err then
+            vim.notify(err, vim.log.levels.ERROR)
+            return
+        end
+
+        cli.get_pr_for_branch(function(pr_info, pr_err)
+            if pr_err then
+                vim.notify(pr_err, vim.log.levels.ERROR)
+                return
+            end
+
+            local url = string.format("https://github.com/%s/%s/pull/%d", pr_info.owner, pr_info.repo, pr_info.number)
+
+            M.fetch_and_enable(url, function()
+                state.set_checkout_state(checkout_info.prev_branch, checkout_info.stashed)
+            end)
+        end)
+    end)
+end
+
+function M.open_url(url)
+    M.fetch_and_enable(url)
+end
+
+function M.fetch_and_enable(url, on_ready)
+    local cli = require("greviewer.cli")
+    local state = require("greviewer.state")
 
     vim.notify("Fetching PR data...", vim.log.levels.INFO)
 
@@ -45,23 +102,107 @@ function M.open(url)
         local review = state.set_review(data)
         review.url = url
 
+        if on_ready then
+            on_ready()
+        end
+
+        M.enable_overlay()
+
         vim.notify(
-            string.format("Loaded PR #%d: %s (%d files)", data.pr.number, data.pr.title, #data.files),
+            string.format("Review mode enabled for PR #%d: %s (%d files changed)", data.pr.number, data.pr.title, #data.files),
             vim.log.levels.INFO
         )
-
-        if #data.files > 0 then
-            buffer.open_file(data.files[1])
-        else
-            vim.notify("No files changed in this PR", vim.log.levels.WARN)
-        end
     end)
 end
 
-function M.close()
+function M.enable_overlay()
     local state = require("greviewer.state")
+    local review = state.get_review()
+    if not review then
+        return
+    end
+
+    local autocmd_id = vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+        callback = function(args)
+            M.apply_overlay_to_buffer(args.buf)
+        end,
+    })
+    state.set_autocmd_id(autocmd_id)
+
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(buf) then
+            M.apply_overlay_to_buffer(buf)
+        end
+    end
+end
+
+function M.apply_overlay_to_buffer(bufnr)
+    local state = require("greviewer.state")
+    local review = state.get_review()
+    if not review then
+        return
+    end
+
+    if state.is_buffer_applied(bufnr) then
+        return
+    end
+
+    local bufname = vim.api.nvim_buf_get_name(bufnr)
+    if bufname == "" then
+        return
+    end
+
+    local cwd = vim.fn.getcwd()
+    local relative_path = bufname
+    if bufname:sub(1, #cwd) == cwd then
+        relative_path = bufname:sub(#cwd + 2)
+    end
+
+    local file = state.get_file_by_path(relative_path)
+    if not file then
+        return
+    end
+
+    state.mark_buffer_applied(bufnr)
+
+    vim.api.nvim_buf_set_var(bufnr, "greviewer_file", file)
+    vim.api.nvim_buf_set_var(bufnr, "greviewer_pr_url", review.url)
+
+    local signs = require("greviewer.ui.signs")
+    signs.place(bufnr, file.hunks)
+
+    local comments_ui = require("greviewer.ui.comments")
+    comments_ui.show_existing(bufnr, file.path)
+end
+
+function M.done()
+    local state = require("greviewer.state")
+    local cli = require("greviewer.cli")
+    local review = state.get_review()
+
+    if not review then
+        vim.notify("No active review", vim.log.levels.WARN)
+        return
+    end
+
+    local did_checkout = review.did_checkout
+    local prev_branch = review.prev_branch
+    local did_stash = review.did_stash
+
     state.clear_review()
-    vim.notify("Review closed", vim.log.levels.INFO)
+
+    if did_checkout and prev_branch then
+        vim.notify("Restoring previous branch...", vim.log.levels.INFO)
+        cli.restore_branch(prev_branch, did_stash, function(ok, err)
+            if ok then
+                vim.notify(string.format("Restored to branch: %s", prev_branch), vim.log.levels.INFO)
+            else
+                vim.notify(err, vim.log.levels.ERROR)
+            end
+        end)
+    else
+        vim.notify("Review closed", vim.log.levels.INFO)
+    end
 end
 
 function M.show_file_picker()
@@ -113,8 +254,7 @@ function M.show_file_picker()
                 local selection = action_state.get_selected_entry()
                 if selection then
                     state.set_current_file_idx(selection.value.idx)
-                    local buffer = require("greviewer.ui.buffer")
-                    buffer.open_file(review.files[selection.value.idx])
+                    vim.cmd("edit " .. selection.value.path)
                 end
             end)
             return true
@@ -134,8 +274,7 @@ function M.show_file_picker_fallback()
     vim.ui.select(items, { prompt = "Select file:" }, function(_, idx)
         if idx then
             state.set_current_file_idx(idx)
-            local buffer = require("greviewer.ui.buffer")
-            buffer.open_file(review.files[idx])
+            vim.cmd("edit " .. review.files[idx].path)
         end
     end)
 end

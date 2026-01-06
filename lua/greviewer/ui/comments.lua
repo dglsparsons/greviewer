@@ -1,6 +1,4 @@
 local state = require("greviewer.state")
-local buffer = require("greviewer.ui.buffer")
-local cli = require("greviewer.cli")
 
 local M = {}
 
@@ -14,6 +12,7 @@ end
 function M.add_at_cursor()
     define_highlights()
 
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     local pr_url = buffer.get_pr_url_from_buffer()
 
@@ -31,6 +30,7 @@ function M.add_at_cursor()
 
         vim.notify("Submitting comment...", vim.log.levels.INFO)
 
+        local cli = require("greviewer.cli")
         cli.add_comment(pr_url, {
             path = file.path,
             line = line,

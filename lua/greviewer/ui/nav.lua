@@ -1,8 +1,7 @@
-local buffer = require("greviewer.ui.buffer")
-
 local M = {}
 
 function M.next_hunk(wrap)
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     if not file then
         vim.notify("Not in a review buffer", vim.log.levels.WARN)
@@ -37,6 +36,7 @@ function M.next_hunk(wrap)
 end
 
 function M.prev_hunk(wrap)
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     if not file then
         vim.notify("Not in a review buffer", vim.log.levels.WARN)
@@ -73,6 +73,7 @@ function M.prev_hunk(wrap)
 end
 
 function M.first_hunk()
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     if not file then
         return
@@ -87,6 +88,7 @@ function M.first_hunk()
 end
 
 function M.last_hunk()
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     if not file then
         return

@@ -5,15 +5,59 @@ local state = {
 }
 
 function M.set_review(review_data)
+    local files_by_path = {}
+    for _, file in ipairs(review_data.files) do
+        files_by_path[file.path] = file
+    end
+
     state.active_review = {
         pr = review_data.pr,
         files = review_data.files,
-        comments = review_data.comments,
+        files_by_path = files_by_path,
+        comments = review_data.comments or {},
         current_file_idx = 1,
-        buffers = {},
         expanded_hunks = {},
+        did_checkout = false,
+        prev_branch = nil,
+        did_stash = false,
+        applied_buffers = {},
+        autocmd_id = nil,
     }
     return state.active_review
+end
+
+function M.set_checkout_state(prev_branch, stashed)
+    if state.active_review then
+        state.active_review.did_checkout = true
+        state.active_review.prev_branch = prev_branch
+        state.active_review.did_stash = stashed
+    end
+end
+
+function M.get_file_by_path(path)
+    if state.active_review and state.active_review.files_by_path then
+        return state.active_review.files_by_path[path]
+    end
+    return nil
+end
+
+function M.mark_buffer_applied(bufnr)
+    if state.active_review then
+        state.active_review.applied_buffers[bufnr] = true
+    end
+end
+
+function M.is_buffer_applied(bufnr)
+    if state.active_review then
+        return state.active_review.applied_buffers[bufnr] == true
+    end
+    return false
+end
+
+function M.set_autocmd_id(id)
+    if state.active_review then
+        state.active_review.autocmd_id = id
+    end
 end
 
 function M.get_review()
@@ -22,9 +66,17 @@ end
 
 function M.clear_review()
     if state.active_review then
-        for _, buf in pairs(state.active_review.buffers) do
-            if vim.api.nvim_buf_is_valid(buf) then
-                vim.api.nvim_buf_delete(buf, { force = true })
+        if state.active_review.autocmd_id then
+            vim.api.nvim_del_autocmd(state.active_review.autocmd_id)
+        end
+        for bufnr, _ in pairs(state.active_review.applied_buffers) do
+            if vim.api.nvim_buf_is_valid(bufnr) then
+                local signs = require("greviewer.ui.signs")
+                local virtual = require("greviewer.ui.virtual")
+                local comments = require("greviewer.ui.comments")
+                signs.clear(bufnr)
+                virtual.clear(bufnr)
+                comments.clear(bufnr)
             end
         end
     end

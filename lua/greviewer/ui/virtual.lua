@@ -1,5 +1,4 @@
 local state = require("greviewer.state")
-local buffer = require("greviewer.ui.buffer")
 
 local M = {}
 
@@ -14,6 +13,7 @@ end
 function M.toggle_at_cursor()
     define_highlights()
 
+    local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
     if not file then
         vim.notify("Not in a review buffer", vim.log.levels.WARN)
