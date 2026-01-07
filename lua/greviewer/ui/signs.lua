@@ -29,42 +29,39 @@ function M.place(bufnr, hunks)
         return
     end
 
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
+
     for _, hunk in ipairs(hunks) do
-        local sign_text, sign_hl, line_hl
-
-        if hunk.hunk_type == "add" then
-            sign_text = config.values.signs.add
-            sign_hl = "GReviewerAdd"
-            line_hl = "GReviewerAddLine"
-        elseif hunk.hunk_type == "delete" then
-            sign_text = config.values.signs.delete
-            sign_hl = "GReviewerDelete"
-            line_hl = "GReviewerDeleteLine"
-        else
-            sign_text = config.values.signs.change
-            sign_hl = "GReviewerChange"
-            line_hl = "GReviewerChangeLine"
-        end
-
-        if hunk.hunk_type == "delete" then
-            local row = math.max(hunk.start - 1, 0)
-            local line_count = vim.api.nvim_buf_line_count(bufnr)
-            if row < line_count then
+        for _, line_num in ipairs(hunk.added_lines or {}) do
+            local row = line_num - 1
+            if row >= 0 and row < line_count then
+                local sign_text, sign_hl, line_hl
+                if hunk.hunk_type == "add" then
+                    sign_text = config.values.signs.add
+                    sign_hl = "GReviewerAdd"
+                    line_hl = "GReviewerAddLine"
+                else
+                    sign_text = config.values.signs.change
+                    sign_hl = "GReviewerChange"
+                    line_hl = "GReviewerChangeLine"
+                end
                 vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
                     sign_text = sign_text,
                     sign_hl_group = sign_hl,
+                    line_hl_group = line_hl,
                     priority = 10,
                 })
             end
-        else
-            for i = 0, math.max(hunk.count - 1, 0) do
-                local row = hunk.start - 1 + i
-                local line_count = vim.api.nvim_buf_line_count(bufnr)
-                if row >= 0 and row < line_count then
+        end
+
+        for _, line_num in ipairs(hunk.deleted_at or {}) do
+            local row = math.max(line_num - 1, 0)
+            if row < line_count then
+                local existing = vim.api.nvim_buf_get_extmarks(bufnr, ns, { row, 0 }, { row, 0 }, {})
+                if #existing == 0 then
                     vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
-                        sign_text = sign_text,
-                        sign_hl_group = sign_hl,
-                        line_hl_group = line_hl,
+                        sign_text = config.values.signs.delete,
+                        sign_hl_group = "GReviewerDelete",
                         priority = 10,
                     })
                 end

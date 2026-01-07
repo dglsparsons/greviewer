@@ -15,6 +15,10 @@ pub struct Hunk {
     pub old_lines: Vec<String>,
     /// Type of change
     pub hunk_type: HunkType,
+    /// Actual line numbers in new file that were added/changed (1-indexed)
+    pub added_lines: Vec<u32>,
+    /// Line numbers in new file where deletions occurred (position after which old lines were removed)
+    pub deleted_at: Vec<u32>,
 }
 
 /// Type of change in a hunk

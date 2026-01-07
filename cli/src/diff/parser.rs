@@ -27,28 +27,31 @@ pub fn parse_patch(patch: &str) -> Vec<Hunk> {
 
             i += 1;
 
-            // Parse the hunk content
             let mut old_lines = Vec::new();
+            let mut added_lines = Vec::new();
+            let mut deleted_at = Vec::new();
             let mut has_additions = false;
             let mut has_deletions = false;
+            let mut new_line_num = new_start;
 
             while i < lines.len() {
                 let content_line = lines[i];
 
-                // Stop at next hunk header or end
                 if content_line.starts_with("@@") || content_line.starts_with("diff ") {
                     break;
                 }
 
                 if content_line.starts_with('-') {
-                    // Deleted line - store the content (without the leading -)
                     old_lines.push(content_line[1..].to_string());
+                    deleted_at.push(new_line_num);
                     has_deletions = true;
                 } else if content_line.starts_with('+') {
-                    // Added line
+                    added_lines.push(new_line_num);
                     has_additions = true;
+                    new_line_num += 1;
+                } else if content_line.starts_with(' ') || content_line.is_empty() {
+                    new_line_num += 1;
                 }
-                // Context lines (starting with ' ') are skipped for old_lines
 
                 i += 1;
             }
@@ -68,6 +71,8 @@ pub fn parse_patch(patch: &str) -> Vec<Hunk> {
                 old_count,
                 old_lines,
                 hunk_type,
+                added_lines,
+                deleted_at,
             });
         } else {
             i += 1;
