@@ -5,9 +5,29 @@ local M = {}
 local ns = vim.api.nvim_create_namespace("greviewer_virtual")
 
 local function define_highlights()
-    vim.api.nvim_set_hl(0, "GReviewerVirtualBorder", { fg = "#5c6370", default = true })
-    vim.api.nvim_set_hl(0, "GReviewerVirtualText", { fg = "#abb2bf", bg = "#3e4451", default = true })
     vim.api.nvim_set_hl(0, "GReviewerVirtualDelete", { fg = "#e06c75", bg = "#3b2d2d", default = true })
+end
+
+local function group_deletions_by_position(hunk)
+    if not hunk.deleted_at or #hunk.deleted_at == 0 then
+        return {}
+    end
+
+    local groups = {}
+    local current_group = nil
+
+    for i, old_line in ipairs(hunk.old_lines) do
+        local pos = hunk.deleted_at[i] or hunk.start
+
+        if current_group and current_group.position == pos then
+            table.insert(current_group.lines, old_line)
+        else
+            current_group = { position = pos, lines = { old_line } }
+            table.insert(groups, current_group)
+        end
+    end
+
+    return groups
 end
 
 function M.toggle_at_cursor()
@@ -44,44 +64,50 @@ function M.toggle_at_cursor()
 end
 
 function M.expand(bufnr, hunk, file_path)
-    local virt_lines = {}
+    local groups = group_deletions_by_position(hunk)
 
-    local border_width = 50
-    local header = hunk.hunk_type == "delete" and " deleted " or " was "
-    local top_border = string.format(
-        "%s%s%s",
-        string.rep("─", 2),
-        header,
-        string.rep("─", math.max(border_width - #header - 2, 0))
-    )
-    table.insert(virt_lines, { { "╭" .. top_border, "GReviewerVirtualBorder" } })
-
-    for _, old_line in ipairs(hunk.old_lines) do
-        local hl = hunk.hunk_type == "delete" and "GReviewerVirtualDelete" or "GReviewerVirtualText"
-        table.insert(virt_lines, { { "│ " .. old_line, hl } })
+    if #groups == 0 then
+        return
     end
 
-    local bottom_border = string.rep("─", border_width)
-    table.insert(virt_lines, { { "╰" .. bottom_border, "GReviewerVirtualBorder" } })
-
-    local row = math.max(hunk.start - 1, 0)
+    local extmark_ids = {}
     local line_count = vim.api.nvim_buf_line_count(bufnr)
-    if row >= line_count then
-        row = line_count - 1
+
+    for _, group in ipairs(groups) do
+        local virt_lines = {}
+
+        for _, old_line in ipairs(group.lines) do
+            table.insert(virt_lines, {
+                { old_line, "GReviewerVirtualDelete" },
+            })
+        end
+
+        local row = math.max(group.position - 1, 0)
+        if row >= line_count then
+            row = line_count - 1
+        end
+
+        local extmark_id = vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
+            virt_lines = virt_lines,
+            virt_lines_above = true,
+        })
+
+        table.insert(extmark_ids, extmark_id)
     end
 
-    vim.api.nvim_buf_set_extmark(bufnr, ns, row, 0, {
-        id = hunk.start,
-        virt_lines = virt_lines,
-        virt_lines_above = true,
-    })
-
-    state.set_hunk_expanded(file_path, hunk.start, true)
+    state.set_hunk_expanded(file_path, hunk.start, extmark_ids)
 end
 
 function M.collapse(bufnr, hunk, file_path)
-    vim.api.nvim_buf_del_extmark(bufnr, ns, hunk.start)
-    state.set_hunk_expanded(file_path, hunk.start, false)
+    local extmark_ids = state.get_hunk_extmarks(file_path, hunk.start)
+
+    if extmark_ids then
+        for _, id in ipairs(extmark_ids) do
+            pcall(vim.api.nvim_buf_del_extmark, bufnr, ns, id)
+        end
+    end
+
+    state.set_hunk_expanded(file_path, hunk.start, nil)
 end
 
 function M.find_hunk_at_line(hunks, line)

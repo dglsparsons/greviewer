@@ -289,10 +289,10 @@ describe("greviewer.state", function()
 
             assert.is_false(state.is_hunk_expanded("test.lua", 10))
 
-            state.set_hunk_expanded("test.lua", 10, true)
+            state.set_hunk_expanded("test.lua", 10, { 1 })
             assert.is_true(state.is_hunk_expanded("test.lua", 10))
 
-            state.set_hunk_expanded("test.lua", 10, false)
+            state.set_hunk_expanded("test.lua", 10, nil)
             assert.is_false(state.is_hunk_expanded("test.lua", 10))
         end)
 
@@ -300,9 +300,9 @@ describe("greviewer.state", function()
             local data = helpers.deep_copy(fixtures.simple_pr)
             state.set_review(data)
 
-            state.set_hunk_expanded("file1.lua", 10, true)
-            state.set_hunk_expanded("file2.lua", 10, true)
-            state.set_hunk_expanded("file1.lua", 20, true)
+            state.set_hunk_expanded("file1.lua", 10, { 1 })
+            state.set_hunk_expanded("file2.lua", 10, { 2 })
+            state.set_hunk_expanded("file1.lua", 20, { 3, 4 })
 
             assert.is_true(state.is_hunk_expanded("file1.lua", 10))
             assert.is_true(state.is_hunk_expanded("file2.lua", 10))
@@ -312,6 +312,24 @@ describe("greviewer.state", function()
 
         it("returns false when no review is active", function()
             assert.is_false(state.is_hunk_expanded("test.lua", 10))
+        end)
+
+        it("stores and retrieves extmark IDs", function()
+            local data = helpers.deep_copy(fixtures.simple_pr)
+            state.set_review(data)
+
+            state.set_hunk_expanded("test.lua", 10, { 101, 102, 103 })
+
+            local extmarks = state.get_hunk_extmarks("test.lua", 10)
+            assert.are.same({ 101, 102, 103 }, extmarks)
+        end)
+
+        it("returns nil extmarks when hunk not expanded", function()
+            local data = helpers.deep_copy(fixtures.simple_pr)
+            state.set_review(data)
+
+            local extmarks = state.get_hunk_extmarks("test.lua", 10)
+            assert.is_nil(extmarks)
         end)
     end)
 

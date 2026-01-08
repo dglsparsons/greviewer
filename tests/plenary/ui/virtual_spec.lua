@@ -222,4 +222,38 @@ describe("greviewer.ui.virtual", function()
             assert.are.equal(0, #helpers.get_extmarks(bufnr, "greviewer_virtual"))
         end)
     end)
+
+    describe("non-contiguous deletions", function()
+        it("creates separate extmarks for deletions at different positions", function()
+            local bufnr, file = setup_review_buffer(fixtures.mixed_changes_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            local extmarks = helpers.get_extmarks(bufnr, "greviewer_virtual")
+            assert.are.equal(2, #extmarks)
+        end)
+
+        it("stores multiple extmark IDs in state", function()
+            local bufnr, file = setup_review_buffer(fixtures.mixed_changes_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            local extmark_ids = state.get_hunk_extmarks(file.path, hunk.start)
+            assert.is_not_nil(extmark_ids)
+            assert.are.equal(2, #extmark_ids)
+        end)
+
+        it("removes all extmarks when collapsing", function()
+            local bufnr, file = setup_review_buffer(fixtures.mixed_changes_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+            assert.are.equal(2, #helpers.get_extmarks(bufnr, "greviewer_virtual"))
+
+            virtual.collapse(bufnr, hunk, file.path)
+            assert.are.equal(0, #helpers.get_extmarks(bufnr, "greviewer_virtual"))
+        end)
+    end)
 end)

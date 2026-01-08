@@ -101,16 +101,25 @@ end
 function M.is_hunk_expanded(file_path, hunk_start)
     if state.active_review then
         local key = file_path .. ":" .. hunk_start
-        return state.active_review.expanded_hunks[key] == true
+        local extmarks = state.active_review.expanded_hunks[key]
+        return extmarks ~= nil and #extmarks > 0
     end
     return false
 end
 
-function M.set_hunk_expanded(file_path, hunk_start, expanded)
+function M.set_hunk_expanded(file_path, hunk_start, extmark_ids)
     if state.active_review then
         local key = file_path .. ":" .. hunk_start
-        state.active_review.expanded_hunks[key] = expanded
+        state.active_review.expanded_hunks[key] = extmark_ids
     end
+end
+
+function M.get_hunk_extmarks(file_path, hunk_start)
+    if state.active_review then
+        local key = file_path .. ":" .. hunk_start
+        return state.active_review.expanded_hunks[key]
+    end
+    return nil
 end
 
 function M.get_comments_for_file(file_path)

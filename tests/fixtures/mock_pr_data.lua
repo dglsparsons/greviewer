@@ -22,7 +22,7 @@ M.simple_pr = {
                     hunk_type = "change",
                     old_lines = { "old line 2", "old line 3" },
                     added_lines = { 2, 3 },
-                    deleted_at = { 2 },
+                    deleted_at = { 2, 2 },
                 },
             },
         },
@@ -169,7 +169,44 @@ M.navigation_pr = {
                     hunk_type = "change",
                     old_lines = { "old 20", "old 21", "old 22" },
                     added_lines = { 20, 21, 22 },
-                    deleted_at = { 20 },
+                    deleted_at = { 20, 20, 20 },
+                },
+            },
+        },
+    },
+    comments = {},
+}
+
+M.mixed_changes_pr = {
+    pr = {
+        number = 999,
+        title = "Mixed changes PR",
+        body = "PR with non-contiguous deletions",
+        state = "open",
+        author = "testuser",
+    },
+    files = {
+        {
+            path = "mixed.lua",
+            status = "modified",
+            additions = 4,
+            deletions = 3,
+            content = table.concat({
+                "new line 1",
+                "new line 2",
+                "context 1",
+                "context 2",
+                "new line 5",
+                "new line 6",
+            }, "\n"),
+            hunks = {
+                {
+                    start = 1,
+                    count = 6,
+                    hunk_type = "change",
+                    old_lines = { "old line 1", "old line 2", "old line 5" },
+                    added_lines = { 1, 2, 5, 6 },
+                    deleted_at = { 1, 1, 5 },
                 },
             },
         },
