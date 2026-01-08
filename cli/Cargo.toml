@@ -38,4 +38,4 @@ regex = "1.11"
 url = "2.5"
 
 # HTTP client for raw API requests
-reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "native-tls", "http2"] }
