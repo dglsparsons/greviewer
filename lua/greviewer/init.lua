@@ -5,10 +5,7 @@ function M.setup(opts)
     config.setup(opts)
 
     if vim.fn.executable(config.values.cli_path) == 0 then
-        vim.notify(
-            "greviewer-cli not found. Please install it with: cargo install --path cli",
-            vim.log.levels.WARN
-        )
+        vim.notify("greviewer-cli not found. Please install it with: cargo install --path cli", vim.log.levels.WARN)
     end
 
     vim.api.nvim_create_user_command("GReview", function(ctx)
@@ -121,7 +118,12 @@ function M.fetch_and_enable(url, on_ready)
         M.enable_overlay()
 
         vim.notify(
-            string.format("Review mode enabled for PR #%d: %s (%d files changed)", data.pr.number, data.pr.title, #data.files),
+            string.format(
+                "Review mode enabled for PR #%d: %s (%d files changed)",
+                data.pr.number,
+                data.pr.title,
+                #data.files
+            ),
             vim.log.levels.INFO
         )
     end)
@@ -247,31 +249,33 @@ function M.show_file_picker()
         })
     end
 
-    telescope.new({}, {
-        prompt_title = string.format("PR #%d Files", review.pr.number),
-        finder = finders.new_table({
-            results = entries,
-            entry_maker = function(entry)
-                return {
-                    value = entry,
-                    display = entry.display,
-                    ordinal = entry.path,
-                }
+    telescope
+        .new({}, {
+            prompt_title = string.format("PR #%d Files", review.pr.number),
+            finder = finders.new_table({
+                results = entries,
+                entry_maker = function(entry)
+                    return {
+                        value = entry,
+                        display = entry.display,
+                        ordinal = entry.path,
+                    }
+                end,
+            }),
+            sorter = conf.generic_sorter({}),
+            attach_mappings = function(prompt_bufnr)
+                actions.select_default:replace(function()
+                    actions.close(prompt_bufnr)
+                    local selection = action_state.get_selected_entry()
+                    if selection then
+                        state.set_current_file_idx(selection.value.idx)
+                        vim.cmd("edit " .. selection.value.path)
+                    end
+                end)
+                return true
             end,
-        }),
-        sorter = conf.generic_sorter({}),
-        attach_mappings = function(prompt_bufnr)
-            actions.select_default:replace(function()
-                actions.close(prompt_bufnr)
-                local selection = action_state.get_selected_entry()
-                if selection then
-                    state.set_current_file_idx(selection.value.idx)
-                    vim.cmd("edit " .. selection.value.path)
-                end
-            end)
-            return true
-        end,
-    }):find()
+        })
+        :find()
 end
 
 function M.show_file_picker_fallback()
