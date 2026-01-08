@@ -47,8 +47,14 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - uses: DeterminateSystems/magic-nix-cache-action@main
 
-      - name: Build and test
+      - name: Build
         run: nix build -L
 
       - name: Clippy and fmt
         run: nix flake check -L
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run tests
+        run: cargo test -p greviewer-cli --all-targets
