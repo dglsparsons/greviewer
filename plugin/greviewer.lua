@@ -9,7 +9,7 @@ vim.api.nvim_create_autocmd("VimEnter", {
             local arg = vim.fn.argv(0)
             if type(arg) == "string" and arg:match("github%.com/.+/pull/%d+") then
                 vim.defer_fn(function()
-                    require("greviewer").open(arg)
+                    require("greviewer").open_url(arg)
                 end, 100)
             end
         end

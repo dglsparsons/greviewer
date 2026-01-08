@@ -282,6 +282,11 @@ function M.show_file_picker_fallback()
     local state = require("greviewer.state")
     local review = state.get_review()
 
+    if not review or not review.files then
+        vim.notify("No active review", vim.log.levels.WARN)
+        return
+    end
+
     local items = {}
     for i, file in ipairs(review.files) do
         table.insert(items, string.format("%d. [%s] %s", i, file.status, file.path))
