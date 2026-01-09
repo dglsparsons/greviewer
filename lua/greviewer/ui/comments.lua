@@ -39,9 +39,16 @@ function M.add_at_cursor(opts)
 
     local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
-    local pr_url = buffer.get_pr_url_from_buffer()
 
-    if not file or not pr_url then
+    if not file then
+        vim.notify("Not in a review buffer", vim.log.levels.WARN)
+        return
+    end
+
+    local is_local = state.is_local_review()
+    local pr_url = not is_local and buffer.get_pr_url_from_buffer() or nil
+
+    if not is_local and not pr_url then
         vim.notify("Not in a review buffer", vim.log.levels.WARN)
         return
     end
@@ -64,46 +71,81 @@ function M.add_at_cursor(opts)
             return
         end
 
-        vim.notify("Submitting comment...", vim.log.levels.INFO)
+        if is_local then
+            M.add_local_comment(file, start_line, end_line, body)
+        else
+            M.add_pr_comment(file, pr_url, start_line, end_line, end_pos, start_pos, body)
+        end
+    end)
+end
 
-        local cli = require("greviewer.cli")
-        local comment_data = {
-            path = file.path,
-            line = end_pos.line,
-            side = end_pos.side,
-            body = body,
-        }
+function M.add_local_comment(file, start_line, end_line, body)
+    local comments_file = require("greviewer.ui.comments_file")
 
-        if start_pos then
-            comment_data.start_line = start_pos.line
-            comment_data.start_side = start_pos.side
+    local success = comments_file.write(file.path, start_line or end_line, end_line, body)
+    if not success then
+        vim.notify("Failed to write comment", vim.log.levels.ERROR)
+        return
+    end
+
+    vim.notify("Comment added to REVIEW_COMMENTS.md", vim.log.levels.INFO)
+
+    local comment = {
+        id = os.time(),
+        path = file.path,
+        line = end_line,
+        start_line = start_line,
+        side = "RIGHT",
+        body = body,
+        author = "you",
+        created_at = os.date("%Y-%m-%dT%H:%M:%S"),
+    }
+    state.add_comment(comment)
+
+    local bufnr = vim.api.nvim_get_current_buf()
+    M.show_comment(bufnr, comment)
+end
+
+function M.add_pr_comment(file, pr_url, start_line, end_line, end_pos, start_pos, body)
+    vim.notify("Submitting comment...", vim.log.levels.INFO)
+
+    local cli = require("greviewer.cli")
+    local comment_data = {
+        path = file.path,
+        line = end_pos.line,
+        side = end_pos.side,
+        body = body,
+    }
+
+    if start_pos then
+        comment_data.start_line = start_pos.line
+        comment_data.start_side = start_pos.side
+    end
+
+    cli.add_comment(pr_url, comment_data, function(data, err)
+        if err then
+            vim.notify("Failed to add comment: " .. err, vim.log.levels.ERROR)
+            return
         end
 
-        cli.add_comment(pr_url, comment_data, function(data, err)
-            if err then
-                vim.notify("Failed to add comment: " .. err, vim.log.levels.ERROR)
-                return
-            end
+        vim.notify("Comment added!", vim.log.levels.INFO)
 
-            vim.notify("Comment added!", vim.log.levels.INFO)
+        local comment = {
+            id = data.comment_id,
+            path = file.path,
+            line = end_line,
+            start_line = start_line,
+            side = end_pos.side,
+            start_side = start_pos and start_pos.side or nil,
+            body = body,
+            author = "you",
+            created_at = os.date("%Y-%m-%dT%H:%M:%S"),
+            html_url = data.html_url or "",
+        }
+        state.add_comment(comment)
 
-            local comment = {
-                id = data.comment_id,
-                path = file.path,
-                line = end_line,
-                start_line = start_line,
-                side = end_pos.side,
-                start_side = start_pos and start_pos.side or nil,
-                body = body,
-                author = "you",
-                created_at = os.date("%Y-%m-%dT%H:%M:%S"),
-                html_url = data.html_url or "",
-            }
-            state.add_comment(comment)
-
-            local bufnr = vim.api.nvim_get_current_buf()
-            M.show_comment(bufnr, comment)
-        end)
+        local bufnr = vim.api.nvim_get_current_buf()
+        M.show_comment(bufnr, comment)
     end)
 end
 
@@ -304,7 +346,7 @@ local function format_date(iso_date)
     return iso_date
 end
 
-local function build_thread_lines(threads)
+local function build_thread_lines(threads, is_local_review)
     local lines = {}
     local highlights = {}
     local comment_positions = {}
@@ -369,11 +411,15 @@ local function build_thread_lines(threads)
 
     local config = require("greviewer.config")
     local keys = config.values.thread_window.keys
-    local reply_key = type(keys.reply) == "table" and keys.reply[1] or keys.reply
     local close_key = type(keys.close) == "table" and keys.close[1] or keys.close
 
     table.insert(lines, "")
-    table.insert(lines, string.format("[%s] Reply  [%s] Close", reply_key, close_key))
+    if is_local_review then
+        table.insert(lines, string.format("[%s] Close", close_key))
+    else
+        local reply_key = type(keys.reply) == "table" and keys.reply[1] or keys.reply
+        table.insert(lines, string.format("[%s] Reply  [%s] Close", reply_key, close_key))
+    end
     table.insert(highlights, {
         line = #lines,
         hl = "GReviewerThreadReply",
@@ -454,9 +500,15 @@ function M.show_thread()
 
     local buffer = require("greviewer.ui.buffer")
     local file = buffer.get_current_file_from_buffer()
-    local pr_url = buffer.get_pr_url_from_buffer()
+    local is_local = state.is_local_review()
+    local pr_url = not is_local and buffer.get_pr_url_from_buffer() or nil
 
-    if not file or not pr_url then
+    if not file then
+        vim.notify("Not in a review buffer", vim.log.levels.WARN)
+        return
+    end
+
+    if not is_local and not pr_url then
         vim.notify("Not in a review buffer", vim.log.levels.WARN)
         return
     end
@@ -471,7 +523,7 @@ function M.show_thread()
 
     close_thread_window()
 
-    local lines, highlights, comment_positions = build_thread_lines(threads)
+    local lines, highlights, comment_positions = build_thread_lines(threads, is_local)
 
     thread_buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_lines(thread_buf, 0, -1, false, lines)
@@ -519,15 +571,17 @@ function M.show_thread()
         vim.keymap.set("n", key, close_thread_window, { buffer = thread_buf, nowait = true })
     end
 
-    for _, key in ipairs(normalize_keys(keys.reply)) do
-        vim.keymap.set("n", key, function()
-            local comment = get_comment_at_cursor(comment_positions)
-            if comment then
-                prompt_reply(comment, pr_url)
-            else
-                vim.notify("No comment found at cursor", vim.log.levels.WARN)
-            end
-        end, { buffer = thread_buf, nowait = true })
+    if not is_local then
+        for _, key in ipairs(normalize_keys(keys.reply)) do
+            vim.keymap.set("n", key, function()
+                local comment = get_comment_at_cursor(comment_positions)
+                if comment then
+                    prompt_reply(comment, pr_url)
+                else
+                    vim.notify("No comment found at cursor", vim.log.levels.WARN)
+                end
+            end, { buffer = thread_buf, nowait = true })
+        end
     end
 end
 

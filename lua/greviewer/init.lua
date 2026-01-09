@@ -45,6 +45,10 @@ function M.setup(opts)
     vim.api.nvim_create_user_command("GReviewComment", function(ctx)
         M.add_comment({ line1 = ctx.line1, line2 = ctx.line2 })
     end, { range = true, desc = "Add comment at cursor or on visual selection" })
+
+    vim.api.nvim_create_user_command("GReviewDiff", function()
+        M.open_diff()
+    end, { desc = "Review local git diff (staged + unstaged changes)" })
 end
 
 function M.open()
@@ -93,6 +97,35 @@ end
 
 function M.open_url(url)
     M.fetch_and_enable(url)
+end
+
+function M.open_diff()
+    local cli = require("greviewer.cli")
+    local state = require("greviewer.state")
+
+    vim.notify("Getting local diff...", vim.log.levels.INFO)
+
+    cli.get_local_diff(function(data, err)
+        if err then
+            vim.notify("Failed to get diff: " .. err, vim.log.levels.ERROR)
+            return
+        end
+
+        if #data.files == 0 then
+            vim.notify("No changes to review", vim.log.levels.WARN)
+            return
+        end
+
+        state.clear_review()
+        state.set_local_review(data)
+
+        local comments_file = require("greviewer.ui.comments_file")
+        comments_file.clear()
+
+        M.enable_overlay()
+
+        vim.notify(string.format("Local diff review enabled (%d files changed)", #data.files), vim.log.levels.INFO)
+    end)
 end
 
 function M.fetch_and_enable(url, on_ready)
@@ -180,13 +213,17 @@ function M.apply_overlay_to_buffer(bufnr)
     state.mark_buffer_applied(bufnr)
 
     vim.api.nvim_buf_set_var(bufnr, "greviewer_file", file)
-    vim.api.nvim_buf_set_var(bufnr, "greviewer_pr_url", review.url)
+    if review.url then
+        vim.api.nvim_buf_set_var(bufnr, "greviewer_pr_url", review.url)
+    end
 
     local signs = require("greviewer.ui.signs")
     signs.place(bufnr, file.hunks)
 
-    local comments_ui = require("greviewer.ui.comments")
-    comments_ui.show_existing(bufnr, file.path)
+    if not state.is_local_review() then
+        local comments_ui = require("greviewer.ui.comments")
+        comments_ui.show_existing(bufnr, file.path)
+    end
 end
 
 function M.done()
@@ -241,7 +278,7 @@ function M.show_file_picker()
 
     local entries = {}
     for i, file in ipairs(review.files) do
-        local icon = ({ add = "+", delete = "-", modified = "~", renamed = "R" })[file.status] or "?"
+        local icon = ({ added = "+", deleted = "-", modified = "~", renamed = "R" })[file.status] or "?"
         table.insert(entries, {
             display = string.format("[%s] %s (+%d/-%d)", icon, file.path, file.additions or 0, file.deletions or 0),
             path = file.path,
@@ -249,9 +286,11 @@ function M.show_file_picker()
         })
     end
 
+    local title = state.is_local_review() and "Local Diff Files" or string.format("PR #%d Files", review.pr.number)
+
     telescope
         .new({}, {
-            prompt_title = string.format("PR #%d Files", review.pr.number),
+            prompt_title = title,
             finder = finders.new_table({
                 results = entries,
                 entry_maker = function(entry)

@@ -26,6 +26,7 @@ your editor. It provides:
 - Multi-line comments with visual range selection
 - Submit reviews (approve or request changes)
 - Telescope integration for file picker
+- Local git diff review (review uncommitted changes before pushing)
 
 ==============================================================================
 2. REQUIREMENTS                                        *greviewer-requirements*
@@ -97,6 +98,22 @@ thread_window.keys ~
     
     If a review is already active, toggles overlay visibility.
 
+:GReviewDiff                                                     *:GReviewDiff*
+    Review local git diff (both staged and unstaged changes). This allows
+    you to review code changes before committing. Comments are written to
+    `REVIEW_COMMENTS.md` in the project root with the format:
+>
+        # Review Comments
+
+        ## file=path/to/file.lua:line=42
+        Your comment about the code here.
+
+        ## file=path/to/file.lua:line=100-105
+        Multi-line comment spanning lines 100-105.
+<
+    This file can be fed to an AI agent or used as a review checklist.
+    The file is cleared each time you start a new local diff review.
+
 :GReviewDone                                                     *:GReviewDone*
     Close the current review, clean up buffers, and restore previous
     branch state if a PR was checked out.
@@ -160,6 +177,10 @@ require("greviewer").submit_review()                 *greviewer.submit_review()*
 
 require("greviewer").toggle_overlays()             *greviewer.toggle_overlays()*
     Toggle visibility of review overlays (signs, comments, etc.).
+
+require("greviewer").open_diff()                       *greviewer.open_diff()*
+    Start a local diff review of staged and unstaged changes. Same as
+    running |:GReviewDiff|.
 
 ==============================================================================
 7. KEYMAPS                                                  *greviewer-keymaps*
