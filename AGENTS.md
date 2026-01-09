@@ -40,8 +40,14 @@ make test
 # Format Rust code (required before committing)
 cargo fmt --all
 
+# Format Lua code (required before committing)
+stylua lua/ plugin/ tests/
+
 # Format Terraform (required before committing)
 terraform fmt -recursive repo/
+
+# Run all checks (Rust + Lua linting/formatting)
+nix flake check
 
 # Build CLI
 cargo build -p greviewer-cli --release
@@ -98,6 +104,20 @@ Keep the docs in sync with `lua/greviewer/init.lua` (commands/functions) and `lu
 ## Nix
 
 `flake.nix` builds both CLI and plugin. Uses `src = ./.` which only includes git-tracked files - uncommitted changes won't appear in Nix builds.
+
+### Checks
+
+`nix flake check` runs all linting/formatting checks:
+- `clippy` - Rust lints
+- `fmt` - Rust formatting
+- `lua-lint` - lua-language-server diagnostics
+- `lua-fmt` - stylua formatting
+
+### CI
+
+GitHub Actions use Nix for reproducible builds. When adding new CI jobs, prefer Nix over manual tool installation:
+- Use `DeterminateSystems/nix-installer-action` and `magic-nix-cache-action`
+- Add checks to `flake.nix` and run via `nix build .#checks...` or `nix flake check`
 
 ## Git Operations
 

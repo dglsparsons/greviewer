@@ -53,7 +53,7 @@ jobs:
       - name: Build
         run: nix build -L
 
-      - name: Clippy and fmt
+      - name: Lint & format
         run: nix flake check -L
 
       - name: Install Rust

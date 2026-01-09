@@ -62,6 +62,22 @@
             pname = "greviewer-cli";
             version = "0.1.0";
           };
+
+          lua-lint = pkgs.runCommand "lua-lint" {
+            nativeBuildInputs = [ pkgs.lua-language-server ];
+          } ''
+            export HOME=$(mktemp -d)
+            lua-language-server --check ${./.} --checklevel=Warning
+            touch $out
+          '';
+
+          lua-fmt = pkgs.runCommand "lua-fmt" {
+            nativeBuildInputs = [ pkgs.stylua ];
+          } ''
+            cd ${./.}
+            stylua --check lua/ plugin/ tests/
+            touch $out
+          '';
         };
       }
     ) // {
