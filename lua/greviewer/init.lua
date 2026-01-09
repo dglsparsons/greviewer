@@ -8,47 +8,40 @@ function M.setup(opts)
         vim.notify("greviewer CLI not found. Please install it with: cargo install --path cli", vim.log.levels.WARN)
     end
 
-    vim.api.nvim_create_user_command("GReview", function(ctx)
+    vim.api.nvim_create_user_command("GReviewPR", function(ctx)
         local arg = ctx.args
-        local state = require("greviewer.state")
-
         if arg and arg ~= "" then
-            local pr_number = tonumber(arg)
-            if pr_number then
-                M.open_with_checkout(pr_number)
-            else
-                M.open_url(arg)
-            end
-        elseif state.get_review() then
-            M.toggle_overlays()
+            M.review(arg)
         else
-            M.open()
+            M.review()
         end
-    end, { nargs = "?", desc = "Open PR review, or toggle overlays if review is active" })
+    end, { nargs = "?", desc = "Open PR review" })
 
-    vim.api.nvim_create_user_command("GReviewDone", function()
-        M.done()
-    end, { desc = "Close review and restore previous state" })
+    vim.api.nvim_create_user_command("GReviewDiff", function()
+        M.review_diff()
+    end, { desc = "Review local git diff (staged + unstaged changes)" })
 
-    vim.api.nvim_create_user_command("GReviewFiles", function()
-        M.show_file_picker()
-    end, { desc = "Show changed files picker" })
-
-    vim.api.nvim_create_user_command("GReviewAuth", function()
-        M.check_auth()
-    end, { desc = "Check GitHub authentication" })
-
-    vim.api.nvim_create_user_command("GReviewSubmit", function()
-        M.submit_review()
-    end, { desc = "Submit review (approve or request changes)" })
-
-    vim.api.nvim_create_user_command("GReviewComment", function(ctx)
+    vim.api.nvim_create_user_command("GAddComment", function(ctx)
         M.add_comment({ line1 = ctx.line1, line2 = ctx.line2 })
     end, { range = true, desc = "Add comment at cursor or on visual selection" })
 
-    vim.api.nvim_create_user_command("GReviewDiff", function()
-        M.open_diff()
-    end, { desc = "Review local git diff (staged + unstaged changes)" })
+    vim.api.nvim_create_user_command("GApprove", function()
+        M.approve()
+    end, { desc = "Approve the PR" })
+
+    vim.api.nvim_create_user_command("GRequestChanges", function(ctx)
+        M.request_changes(ctx.args ~= "" and ctx.args or nil)
+    end, { nargs = "?", desc = "Request changes on the PR" })
+end
+
+function M.review(url_or_number)
+    if url_or_number == nil then
+        M.open()
+    elseif type(url_or_number) == "number" or tonumber(url_or_number) then
+        M.open_with_checkout(tonumber(url_or_number))
+    else
+        M.open_url(url_or_number)
+    end
 end
 
 function M.open()
@@ -99,7 +92,7 @@ function M.open_url(url)
     M.fetch_and_enable(url)
 end
 
-function M.open_diff()
+function M.review_diff()
     local cli = require("greviewer.cli")
     local state = require("greviewer.state")
 
@@ -226,36 +219,6 @@ function M.apply_overlay_to_buffer(bufnr)
     end
 end
 
-function M.done()
-    local state = require("greviewer.state")
-    local cli = require("greviewer.cli")
-    local review = state.get_review()
-
-    if not review then
-        vim.notify("No active review", vim.log.levels.WARN)
-        return
-    end
-
-    local did_checkout = review.did_checkout
-    local prev_branch = review.prev_branch
-    local did_stash = review.did_stash
-
-    state.clear_review()
-
-    if did_checkout and prev_branch then
-        vim.notify("Restoring previous branch...", vim.log.levels.INFO)
-        cli.restore_branch(prev_branch, did_stash, function(ok, err)
-            if ok then
-                vim.notify(string.format("Restored to branch: %s", prev_branch), vim.log.levels.INFO)
-            else
-                vim.notify(err, vim.log.levels.ERROR)
-            end
-        end)
-    else
-        vim.notify("Review closed", vim.log.levels.INFO)
-    end
-end
-
 function M.show_file_picker()
     local state = require("greviewer.state")
     local review = state.get_review()
@@ -363,7 +326,7 @@ function M.prev_comment()
     nav.prev_comment(config.values.wrap_navigation)
 end
 
-function M.toggle_inline()
+function M.toggle_prev_code()
     local virtual = require("greviewer.ui.virtual")
     virtual.toggle_at_cursor()
 end
@@ -389,7 +352,7 @@ function M.check_auth()
     end)
 end
 
-function M.submit_review()
+function M.approve()
     local state = require("greviewer.state")
     local cli = require("greviewer.cli")
     local review = state.get_review()
@@ -399,66 +362,66 @@ function M.submit_review()
         return
     end
 
-    vim.ui.select({ "Approve", "Request Changes" }, {
-        prompt = "Submit review:",
-    }, function(choice)
-        if not choice then
-            return
-        end
-
-        if choice == "Approve" then
-            cli.submit_review(review.url, "APPROVE", nil, function(ok, err)
-                if ok then
-                    vim.notify("Review approved", vim.log.levels.INFO)
-                else
-                    vim.notify("Failed to submit review: " .. (err or "unknown error"), vim.log.levels.ERROR)
-                end
-            end)
+    cli.submit_review(review.url, "APPROVE", nil, function(ok, err)
+        if ok then
+            vim.notify("Review approved", vim.log.levels.INFO)
         else
-            vim.ui.input({
-                prompt = "Message (leave empty for default): ",
-            }, function(input)
-                local body = input
-                if not body or body == "" then
-                    body = "Please see inline comments"
-                end
-                cli.submit_review(review.url, "REQUEST_CHANGES", body, function(ok, err)
-                    if ok then
-                        vim.notify("Changes requested", vim.log.levels.INFO)
-                    else
-                        vim.notify("Failed to submit review: " .. (err or "unknown error"), vim.log.levels.ERROR)
-                    end
-                end)
-            end)
+            vim.notify("Failed to submit review: " .. (err or "unknown error"), vim.log.levels.ERROR)
         end
     end)
 end
 
-function M.show_overlays()
+function M.request_changes(message)
     local state = require("greviewer.state")
-    if not state.get_review() then
+    local cli = require("greviewer.cli")
+    local review = state.get_review()
+
+    if not review then
+        vim.notify("No active review", vim.log.levels.WARN)
         return
     end
 
-    M.enable_overlay()
-    state.set_overlays_visible(true)
+    local body = message
+    if not body or body == "" then
+        body = "Please see inline comments"
+    end
+    cli.submit_review(review.url, "REQUEST_CHANGES", body, function(ok, err)
+        if ok then
+            vim.notify("Changes requested", vim.log.levels.INFO)
+        else
+            vim.notify("Failed to submit review: " .. (err or "unknown error"), vim.log.levels.ERROR)
+        end
+    end)
 end
 
-function M.toggle_overlays()
+function M.done()
     local state = require("greviewer.state")
+    local cli = require("greviewer.cli")
     local review = state.get_review()
+
     if not review then
-        return false
+        vim.notify("No active review", vim.log.levels.WARN)
+        return
     end
 
-    if state.are_overlays_visible() then
-        state.hide_overlays()
-        vim.notify("Review overlays hidden", vim.log.levels.INFO)
+    local did_checkout = review.did_checkout
+    local prev_branch = review.prev_branch
+    local did_stash = review.did_stash
+
+    state.clear_review()
+
+    if did_checkout and prev_branch then
+        vim.notify("Restoring previous branch...", vim.log.levels.INFO)
+        cli.restore_branch(prev_branch, did_stash, function(ok, err)
+            if ok then
+                vim.notify(string.format("Restored to branch: %s", prev_branch), vim.log.levels.INFO)
+            else
+                vim.notify(err, vim.log.levels.ERROR)
+            end
+        end)
     else
-        M.show_overlays()
-        vim.notify("Review overlays shown", vim.log.levels.INFO)
+        vim.notify("Review closed", vim.log.levels.INFO)
     end
-    return true
 end
 
 return M
