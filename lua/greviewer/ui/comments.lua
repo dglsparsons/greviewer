@@ -319,9 +319,11 @@ local function build_thread_lines(threads)
 
         for comment_idx, comment in ipairs(thread) do
             local start_line_num = #lines + 1
-            local indent = comment_idx > 1 and "  ↳ " or ""
+            local is_reply = comment_idx > 1
+            local reply_marker = is_reply and "  ↳ " or ""
+            local reply_indent = is_reply and "    " or ""
 
-            local author_line = indent .. "@" .. (comment.author or "unknown")
+            local author_line = reply_marker .. "@" .. (comment.author or "unknown")
             if comment_idx == 1 and type(comment.start_line) == "number" and type(comment.line) == "number" then
                 author_line = author_line .. string.format("  [lines %d-%d]", comment.start_line, comment.line)
             elseif comment_idx == 1 and type(comment.line) == "number" then
@@ -331,11 +333,11 @@ local function build_thread_lines(threads)
             table.insert(highlights, {
                 line = #lines,
                 hl = "GReviewerThreadAuthor",
-                col_start = #indent,
+                col_start = #reply_marker,
                 col_end = #author_line,
             })
 
-            local date_line = indent .. "  " .. format_date(comment.created_at)
+            local date_line = reply_indent .. "  " .. format_date(comment.created_at)
             table.insert(lines, date_line)
             table.insert(highlights, {
                 line = #lines,
@@ -348,7 +350,7 @@ local function build_thread_lines(threads)
 
             local body = comment.body or ""
             for body_line in (body .. "\n"):gmatch("([^\n]*)\n") do
-                table.insert(lines, indent .. "  " .. body_line)
+                table.insert(lines, reply_indent .. "  " .. body_line)
                 table.insert(highlights, {
                     line = #lines,
                     hl = "GReviewerThreadBody",
