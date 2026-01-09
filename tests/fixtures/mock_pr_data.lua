@@ -245,4 +245,44 @@ M.mixed_changes_pr = {
     comments = {},
 }
 
+M.local_diff = {
+    git_root = "/tmp/test-repo",
+    files = {
+        {
+            path = "src/main.lua",
+            status = "modified",
+            additions = 5,
+            deletions = 2,
+            hunks = {
+                {
+                    start = 2,
+                    count = 2,
+                    hunk_type = "change",
+                    old_lines = { "old line 2", "old line 3" },
+                    added_lines = { 2, 3 },
+                    deleted_at = { 2, 2 },
+                    deleted_old_lines = { 2, 3 },
+                },
+            },
+        },
+        {
+            path = "src/new.lua",
+            status = "added",
+            additions = 10,
+            deletions = 0,
+            hunks = {
+                {
+                    start = 1,
+                    count = 10,
+                    hunk_type = "add",
+                    old_lines = {},
+                    added_lines = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+                    deleted_at = {},
+                    deleted_old_lines = {},
+                },
+            },
+        },
+    },
+}
+
 return M

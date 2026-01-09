@@ -16,6 +16,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Parse local git diff (staged + unstaged changes)
+    Diff,
+
     /// Fetch PR data including files, hunks, and content
     Fetch {
         /// GitHub PR URL (e.g., https://github.com/owner/repo/pull/123)
@@ -104,6 +107,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Diff => {
+            commands::diff::run()?;
+        }
         Commands::Fetch { url } => {
             commands::fetch::run(&url).await?;
         }

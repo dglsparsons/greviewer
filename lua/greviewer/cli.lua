@@ -260,4 +260,25 @@ function M.submit_review(url, event, body, callback)
     }):start()
 end
 
+function M.get_local_diff(callback)
+    Job:new({
+        command = config.values.cli_path,
+        args = { "diff" },
+        on_exit = vim.schedule_wrap(function(j, code)
+            if code == 0 then
+                local output = table.concat(j:result(), "\n")
+                local ok, data = pcall(vim.json.decode, output)
+                if ok then
+                    callback(data, nil)
+                else
+                    callback(nil, "Failed to parse JSON: " .. output)
+                end
+            else
+                local stderr = table.concat(j:stderr_result(), "\n")
+                callback(nil, "CLI error: " .. stderr)
+            end
+        end),
+    }):start()
+end
+
 return M

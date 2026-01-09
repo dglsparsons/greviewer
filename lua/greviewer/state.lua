@@ -11,6 +11,7 @@ function M.set_review(review_data)
     end
 
     state.active_review = {
+        review_type = "pr",
         pr = review_data.pr,
         files = review_data.files,
         files_by_path = files_by_path,
@@ -25,6 +26,41 @@ function M.set_review(review_data)
         overlays_visible = true,
     }
     return state.active_review
+end
+
+function M.set_local_review(diff_data)
+    local files_by_path = {}
+    for _, file in ipairs(diff_data.files) do
+        files_by_path[file.path] = file
+    end
+
+    state.active_review = {
+        review_type = "local",
+        git_root = diff_data.git_root,
+        files = diff_data.files,
+        files_by_path = files_by_path,
+        comments = {},
+        current_file_idx = 1,
+        expanded_hunks = {},
+        applied_buffers = {},
+        autocmd_id = nil,
+        overlays_visible = true,
+    }
+    return state.active_review
+end
+
+function M.is_local_review()
+    if state.active_review then
+        return state.active_review.review_type == "local"
+    end
+    return false
+end
+
+function M.get_git_root()
+    if state.active_review then
+        return state.active_review.git_root
+    end
+    return nil
 end
 
 function M.set_checkout_state(prev_branch, stashed)

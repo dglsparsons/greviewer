@@ -379,4 +379,89 @@ describe("greviewer.state", function()
             end)
         end)
     end)
+
+    describe("set_local_review", function()
+        it("stores local diff data", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            local review = state.get_review()
+            assert.is_not_nil(review)
+            assert.are.equal("local", review.review_type)
+            assert.are.equal("/tmp/test-repo", review.git_root)
+            assert.are.equal(2, #review.files)
+        end)
+
+        it("sets review_type to local", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            assert.is_true(state.is_local_review())
+        end)
+
+        it("builds files_by_path lookup", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            local review = state.get_review()
+            assert.is_not_nil(review.files_by_path["src/main.lua"])
+            assert.is_not_nil(review.files_by_path["src/new.lua"])
+        end)
+
+        it("initializes empty comments", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            local review = state.get_review()
+            assert.are.equal(0, #review.comments)
+        end)
+
+        it("does not have pr field", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            local review = state.get_review()
+            assert.is_nil(review.pr)
+        end)
+    end)
+
+    describe("is_local_review", function()
+        it("returns true for local review", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            assert.is_true(state.is_local_review())
+        end)
+
+        it("returns false for PR review", function()
+            local data = helpers.deep_copy(fixtures.simple_pr)
+            state.set_review(data)
+
+            assert.is_false(state.is_local_review())
+        end)
+
+        it("returns false when no review is active", function()
+            assert.is_false(state.is_local_review())
+        end)
+    end)
+
+    describe("get_git_root", function()
+        it("returns git root for local review", function()
+            local data = helpers.deep_copy(fixtures.local_diff)
+            state.set_local_review(data)
+
+            assert.are.equal("/tmp/test-repo", state.get_git_root())
+        end)
+
+        it("returns nil for PR review", function()
+            local data = helpers.deep_copy(fixtures.simple_pr)
+            state.set_review(data)
+
+            assert.is_nil(state.get_git_root())
+        end)
+
+        it("returns nil when no review is active", function()
+            assert.is_nil(state.get_git_root())
+        end)
+    end)
 end)
