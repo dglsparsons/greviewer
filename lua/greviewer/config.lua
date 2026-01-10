@@ -17,6 +17,12 @@ M.values = {
             apply = "a",
         },
     },
+    input_window = {
+        keys = {
+            submit = "<C-CR>",
+            cancel = "<Esc>",
+        },
+    },
 }
 
 function M.setup(opts)
