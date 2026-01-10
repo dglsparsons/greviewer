@@ -78,6 +78,12 @@ Call setup() with your options: >lua
                 reply = "r",               -- Key to reply to comment
             },
         },
+        input_window = {
+            keys = {
+                submit = "<C-CR>",  -- Key to submit comment/reply
+                cancel = "<Esc>",   -- Key to cancel input
+            },
+        },
     })
 <
 
@@ -86,6 +92,13 @@ thread_window.keys ~
     Configure keybindings for the comment thread floating window.
     - `close`: Key(s) to close the window. String or table of strings.
     - `reply`: Key(s) to reply to the comment under cursor.
+
+                                                   *greviewer-config-input_window*
+input_window.keys ~
+    Configure keybindings for the comment/reply input floating window.
+    This window allows multi-line input for comments and replies.
+    - `submit`: Key to submit the comment/reply (default: "<C-CR>").
+    - `cancel`: Key to cancel and close the input window (default: "<Esc>").
 
 ==============================================================================
 5. COMMANDS                                                *greviewer-commands*
