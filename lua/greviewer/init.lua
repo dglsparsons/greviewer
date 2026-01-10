@@ -1,5 +1,11 @@
+---@class GReviewerAddCommentOpts
+---@field line1? integer Start line from visual selection
+---@field line2? integer End line from visual selection
+
+---@class GReviewerModule
 local M = {}
 
+---@param opts? GReviewerPartialConfig
 function M.setup(opts)
     local config = require("greviewer.config")
     config.setup(opts)
@@ -68,6 +74,7 @@ function M.open()
     end)
 end
 
+---@param pr_number integer
 function M.open_with_checkout(pr_number)
     local cli = require("greviewer.cli")
     local state = require("greviewer.state")
@@ -95,6 +102,7 @@ function M.open_with_checkout(pr_number)
     end)
 end
 
+---@param url string
 function M.open_url(url)
     M.fetch_and_enable(url)
 end
@@ -128,6 +136,8 @@ function M.open_diff()
     end)
 end
 
+---@param url string
+---@param on_ready? fun()
 function M.fetch_and_enable(url, on_ready)
     local cli = require("greviewer.cli")
     local state = require("greviewer.state")
@@ -183,6 +193,7 @@ function M.enable_overlay()
     end
 end
 
+---@param bufnr integer
 function M.apply_overlay_to_buffer(bufnr)
     local state = require("greviewer.state")
     local review = state.get_review()
@@ -244,7 +255,7 @@ function M.done()
 
     if did_checkout and prev_branch then
         vim.notify("Restoring previous branch...", vim.log.levels.INFO)
-        cli.restore_branch(prev_branch, did_stash, function(ok, err)
+        cli.restore_branch(prev_branch, did_stash or false, function(ok, err)
             if ok then
                 vim.notify(string.format("Restored to branch: %s", prev_branch), vim.log.levels.INFO)
             else
@@ -276,6 +287,7 @@ function M.show_file_picker()
     local actions = require("telescope.actions")
     local action_state = require("telescope.actions.state")
 
+    ---@type {display: string, path: string, idx: integer}[]
     local entries = {}
     for i, file in ipairs(review.files) do
         local icon = ({ added = "+", deleted = "-", modified = "~", renamed = "R" })[file.status] or "?"
@@ -368,6 +380,7 @@ function M.toggle_inline()
     virtual.toggle_at_cursor()
 end
 
+---@param opts? GReviewerAddCommentOpts
 function M.add_comment(opts)
     local comments = require("greviewer.ui.comments")
     comments.add_at_cursor(opts)
@@ -444,6 +457,7 @@ function M.show_overlays()
     state.set_overlays_visible(true)
 end
 
+---@return boolean
 function M.toggle_overlays()
     local state = require("greviewer.state")
     local review = state.get_review()
