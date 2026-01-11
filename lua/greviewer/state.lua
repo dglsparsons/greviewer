@@ -77,8 +77,9 @@ local state = {
 }
 
 ---@param review_data GReviewerReviewData
+---@param git_root string?
 ---@return GReviewerReview
-function M.set_review(review_data)
+function M.set_review(review_data, git_root)
     local files_by_path = {}
     for _, file in ipairs(review_data.files) do
         files_by_path[file.path] = file
@@ -87,6 +88,8 @@ function M.set_review(review_data)
     state.active_review = {
         review_type = "pr",
         pr = review_data.pr,
+        viewer = review_data.viewer,
+        git_root = git_root,
         files = review_data.files,
         files_by_path = files_by_path,
         comments = review_data.comments or {},
