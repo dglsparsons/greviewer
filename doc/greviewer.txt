@@ -82,7 +82,7 @@ Call setup() with your options: >lua
         },
         input_window = {
             keys = {
-                submit = "<C-CR>",  -- Key to submit comment/reply
+                submit = "<C-s>",   -- Key to submit comment/reply
                 cancel = "<Esc>",   -- Key to cancel input
             },
         },
@@ -100,8 +100,9 @@ thread_window.keys ~
                                                    *greviewer-config-input_window*
 input_window.keys ~
     Configure keybindings for the comment/reply input floating window.
-    This window allows multi-line input for comments and replies.
-    - `submit`: Key to submit the comment/reply (default: "<C-CR>").
+    This window allows multi-line input for comments, replies, and review
+    messages (e.g., when requesting changes).
+    - `submit`: Key to submit the input (default: "<C-s>").
     - `cancel`: Key to cancel and close the input window (default: "<Esc>").
 
 ==============================================================================
@@ -200,8 +201,8 @@ require("greviewer").approve()                             *greviewer.approve()*
 
 require("greviewer").request_changes({message})   *greviewer.request_changes()*
     Submit a "request changes" review for the current PR. The {message}
-    parameter is optional; if not provided or empty, defaults to
-    "Please see inline comments".
+    parameter is optional; if not provided or empty, opens a multi-line
+    input window for entering the review message.
 
 require("greviewer").done()                                   *greviewer.done()*
     Close the current review and restore previous state. If the review was

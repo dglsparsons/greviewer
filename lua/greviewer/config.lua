@@ -19,7 +19,7 @@ M.values = {
     },
     input_window = {
         keys = {
-            submit = "<C-CR>",
+            submit = "<C-s>",
             cancel = "<Esc>",
         },
     },

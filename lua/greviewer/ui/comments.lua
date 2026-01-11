@@ -19,7 +19,7 @@ local function close_input_window()
     input_buf = nil
 end
 
-local function open_multiline_input(opts, callback)
+function M.open_multiline_input(opts, callback)
     local config = require("greviewer.config")
     local keys = config.values.input_window.keys
 
@@ -176,7 +176,7 @@ function M.add_at_cursor(opts)
 
     local title = start_line and string.format(" Comment (lines %d-%d) ", start_line, end_line) or " Comment "
 
-    open_multiline_input({ title = title }, function(body)
+    M.open_multiline_input({ title = title }, function(body)
         if is_local then
             M.add_local_comment(file, start_line, end_line, body)
         else
@@ -655,7 +655,7 @@ end
 local function prompt_reply(comment, pr_url)
     close_thread_window()
 
-    open_multiline_input({ title = " Reply " }, function(body)
+    M.open_multiline_input({ title = " Reply " }, function(body)
         vim.notify("Submitting reply...", vim.log.levels.INFO)
 
         local cli = require("greviewer.cli")
