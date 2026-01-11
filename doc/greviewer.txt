@@ -7,9 +7,8 @@ CONTENTS                                                   *greviewer-contents*
     2. Requirements ............................ |greviewer-requirements|
     3. Installation ............................ |greviewer-installation|
     4. Configuration ........................... |greviewer-configuration|
-    5. Commands ................................ |greviewer-commands|
-    6. Functions ............................... |greviewer-functions|
-    7. Keymaps ................................. |greviewer-keymaps|
+    5. Functions ............................... |greviewer-functions|
+    6. Keymaps ................................. |greviewer-keymaps|
 
 ==============================================================================
 1. INTRODUCTION                                        *greviewer-introduction*
@@ -93,17 +92,15 @@ thread_window.keys ~
     - `apply`: Key(s) to apply a suggestion to the buffer.
 
 ==============================================================================
-5. COMMANDS                                                *greviewer-commands*
+5. FUNCTIONS                                              *greviewer-functions*
 
-:GReview {url|number}                                                *:GReview*
+require("greviewer").review({url_or_number})               *greviewer.review()*
     Open a PR for review. Accepts either:
+    - No argument: detects PR for current branch
+    - A PR number: checks out the PR branch and opens review
     - A GitHub PR URL: https://github.com/owner/repo/pull/123
-    - A PR number (will checkout the PR branch): :GReview 123
-    - No argument (detects PR for current branch): :GReview
-    
-    If a review is already active, toggles overlay visibility.
 
-:GReviewDiff                                                     *:GReviewDiff*
+require("greviewer").review_diff()                     *greviewer.review_diff()*
     Review local git diff (both staged and unstaged changes). This allows
     you to review code changes before committing. Comments are written to
     `REVIEW_COMMENTS.md` in the project root with the format:
@@ -118,39 +115,6 @@ thread_window.keys ~
 <
     This file can be fed to an AI agent or used as a review checklist.
     The file is cleared each time you start a new local diff review.
-
-:GReviewDone                                                     *:GReviewDone*
-    Close the current review, clean up buffers, and restore previous
-    branch state if a PR was checked out.
-
-:GReviewFiles                                                   *:GReviewFiles*
-    Open the Telescope file picker (or fallback) to switch between
-    changed files in the PR.
-
-:GReviewAuth                                                     *:GReviewAuth*
-    Check GitHub authentication status.
-
-:GReviewSubmit                                                 *:GReviewSubmit*
-    Submit the review. Prompts to select "Approve" or "Request Changes".
-    For "Request Changes", prompts for an optional message.
-
-:[range]GReviewComment                                       *:GReviewComment*
-    Add a review comment. When called with a visual selection, creates a
-    multi-line comment spanning the selected lines. Without a selection,
-    comments on the current line.
-
-    Multi-line comments show brackets on the right (aligned to window edge),
-    so diff signs remain visible:
->
-        10 │ +  code line 1                              ┐
-        11 │ ~  code line 2                              │
-        12 │ +  code line 3  @reviewer: comment          ┘
-<
-    Opening the thread window (|greviewer.show_comment()|) works from any
-    line within the comment range.
-
-==============================================================================
-6. FUNCTIONS                                              *greviewer-functions*
 
 require("greviewer").next_hunk()                         *greviewer.next_hunk()*
     Jump to the next change in the file.
@@ -168,13 +132,23 @@ require("greviewer").prev_comment()                   *greviewer.prev_comment()*
     (GitHub comments) and local diff review mode. Navigates across files.
     Respects |wrap_navigation| config option.
 
-require("greviewer").toggle_inline()                 *greviewer.toggle_inline()*
+require("greviewer").toggle_prev_code()           *greviewer.toggle_prev_code()*
     Toggle inline preview of old code at cursor position.
 
 require("greviewer").add_comment({opts})               *greviewer.add_comment()*
     Add a review comment. When called with {line1} and {line2} in opts,
     creates a multi-line comment spanning those lines. Otherwise comments
     on the current cursor line.
+
+    Multi-line comments show brackets on the right (aligned to window edge),
+    so diff signs remain visible:
+>
+        10 | +  code line 1                              [
+        11 | ~  code line 2                              |
+        12 | +  code line 3  @reviewer: comment          ]
+<
+    Opening the thread window (|greviewer.show_comment()|) works from any
+    line within the comment range.
 
 require("greviewer").show_comment()                   *greviewer.show_comment()*
     Show the comment thread for the current line in a floating window.
@@ -202,23 +176,27 @@ require("greviewer").show_comment()                   *greviewer.show_comment()*
     Multi-line suggestions are fully supported.
 
 require("greviewer").show_file_picker()           *greviewer.show_file_picker()*
-    Show the file picker (Telescope or fallback).
+    Show the file picker (Telescope or fallback) to switch between changed
+    files in the PR.
 
 require("greviewer").check_auth()                       *greviewer.check_auth()*
     Check GitHub authentication status and notify the result.
 
-require("greviewer").submit_review()                 *greviewer.submit_review()*
-    Submit the review with a prompt to approve or request changes.
+require("greviewer").approve()                             *greviewer.approve()*
+    Submit an approval for the current PR review.
 
-require("greviewer").toggle_overlays()             *greviewer.toggle_overlays()*
-    Toggle visibility of review overlays (signs, comments, etc.).
+require("greviewer").request_changes({message})   *greviewer.request_changes()*
+    Submit a "request changes" review for the current PR. The {message}
+    parameter is optional; if not provided or empty, defaults to
+    "Please see inline comments".
 
-require("greviewer").open_diff()                       *greviewer.open_diff()*
-    Start a local diff review of staged and unstaged changes. Same as
-    running |:GReviewDiff|.
+require("greviewer").done()                                   *greviewer.done()*
+    Close the current review and restore previous state. If the review was
+    opened with a PR number (which checks out the PR branch), this restores
+    the previous branch and pops any stashed changes.
 
 ==============================================================================
-7. KEYMAPS                                                  *greviewer-keymaps*
+6. KEYMAPS                                                  *greviewer-keymaps*
 
 greviewer does not set any keymaps by default. Add your own: >lua
     vim.keymap.set("n", "]c", function()
@@ -238,14 +216,14 @@ greviewer does not set any keymaps by default. Add your own: >lua
     end, { desc = "Previous comment" })
 
     vim.keymap.set("n", "<CR>", function()
-        require("greviewer").toggle_inline()
-    end, { desc = "Toggle inline diff" })
+        require("greviewer").toggle_prev_code()
+    end, { desc = "Toggle old code preview" })
 
     vim.keymap.set("n", "<leader>cc", function()
         require("greviewer").add_comment()
     end, { desc = "Add comment" })
 
-    vim.keymap.set("v", "<leader>cc", ":'<,'>GReviewComment<CR>",
+    vim.keymap.set("v", "<leader>cc", ":GAddComment<CR>",
         { desc = "Add comment on selection" })
 
     vim.keymap.set("n", "<leader>cv", function()
@@ -256,9 +234,17 @@ greviewer does not set any keymaps by default. Add your own: >lua
         require("greviewer").show_file_picker()
     end, { desc = "Show files" })
 
-    vim.keymap.set("n", "<leader>cs", function()
-        require("greviewer").submit_review()
-    end, { desc = "Submit review" })
+    vim.keymap.set("n", "<leader>ca", function()
+        require("greviewer").approve()
+    end, { desc = "Approve PR" })
+
+    vim.keymap.set("n", "<leader>cr", function()
+        require("greviewer").request_changes()
+    end, { desc = "Request changes" })
+
+    vim.keymap.set("n", "<leader>cq", function()
+        require("greviewer").done()
+    end, { desc = "Close review" })
 <
 
 ==============================================================================
