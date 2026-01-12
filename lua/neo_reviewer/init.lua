@@ -39,7 +39,7 @@ function M.setup(opts)
         M.request_changes(ctx.args ~= "" and ctx.args or nil)
     end, { nargs = "?", desc = "Request changes on the PR" })
 
-    vim.api.nvim_create_user_command("GReviewDone", function()
+    vim.api.nvim_create_user_command("ReviewDone", function()
         M.done()
     end, { desc = "End review session without submitting" })
 end
@@ -50,7 +50,7 @@ function M.review_pr(url_or_number)
 
     if state.get_review() then
         vim.notify(
-            "A review is already active. Use :GReviewDone, :GApprove, or :GRequestChanges to end it first.",
+            "A review is already active. Use :ReviewDone, :Approve, or :RequestChanges to end it first.",
             vim.log.levels.WARN
         )
         return
@@ -122,7 +122,7 @@ function M.review_diff()
 
     if state.get_review() then
         vim.notify(
-            "A review is already active. Use :GReviewDone, :GApprove, or :GRequestChanges to end it first.",
+            "A review is already active. Use :ReviewDone, :Approve, or :RequestChanges to end it first.",
             vim.log.levels.WARN
         )
         return

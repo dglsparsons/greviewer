@@ -133,6 +133,11 @@ These user commands are created when you call `setup()`.
     Submit a "request changes" review for the current PR. The message is
     optional; if not provided, opens a multi-line input window.
 
+:ReviewDone                                                        *:ReviewDone*
+    End the current review session without submitting a review. If the review
+    was opened with a PR number (which checks out the PR branch), this restores
+    the previous branch and pops any stashed changes.
+
 ==============================================================================
 6. FUNCTIONS                                            *neo_reviewer-functions*
 
