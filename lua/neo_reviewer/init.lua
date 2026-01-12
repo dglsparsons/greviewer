@@ -558,6 +558,10 @@ function M.sync()
 
         state.set_review(data, preserved.git_root)
         local new_review = state.get_review()
+        if not new_review then
+            vim.notify("Failed to sync: review state lost", vim.log.levels.ERROR)
+            return
+        end
 
         new_review.url = preserved.url
         new_review.expanded_hunks = preserved.expanded_hunks
@@ -569,7 +573,7 @@ function M.sync()
 
         pcall(vim.api.nvim_win_set_cursor, 0, cursor_pos)
 
-        local new_comment_count = #new_review.comments
+        local new_comment_count = #(new_review.comments or {})
         local diff = new_comment_count - old_comment_count
         if diff > 0 then
             vim.notify(string.format("Synced: %d new comment%s", diff, diff == 1 and "" or "s"), vim.log.levels.INFO)

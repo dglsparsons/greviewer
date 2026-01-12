@@ -118,6 +118,16 @@ Keep the docs in sync with `lua/neo_reviewer/init.lua` (commands/functions) and 
 - `lua-lint` - lua-language-server diagnostics
 - `lua-fmt` - stylua formatting
 
+**Run `nix flake check` before considering any change complete.** All checks MUST pass. This includes:
+- Zero Lua diagnostics (warnings are errors)
+- Zero Clippy warnings
+- Properly formatted code
+
+If diagnostics fail, fix them before moving on. Common Lua diagnostic fixes:
+- `need-check-nil`: Add nil guards (e.g., `value or {}`, `if value then`)
+- `undefined-field`: Add missing fields to type stubs in `lua/stubs/`
+- `redundant-parameter`: Check function signature matches usage
+
 ### CI
 
 GitHub Actions use Nix for reproducible builds. When adding new CI jobs, prefer Nix over manual tool installation:
