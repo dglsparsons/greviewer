@@ -253,4 +253,67 @@ describe("neo_reviewer.ui.virtual", function()
             assert.are.equal(0, #helpers.get_extmarks(bufnr, "nr_virtual"))
         end)
     end)
+
+    describe("anchoring behavior", function()
+        it("anchors CHANGE hunk virtual lines to first added line", function()
+            local bufnr, file = setup_review_buffer(fixtures.change_hunk_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            local extmarks = helpers.get_extmarks(bufnr, "nr_virtual")
+            assert.are.equal(1, #extmarks)
+            -- Extmark should be at row 2 (line 3 - 1 = row index 2)
+            -- which is the first added line
+            local row = extmarks[1][2]
+            assert.are.equal(2, row)
+        end)
+
+        it("CHANGE hunk extmarks survive line insertions above anchor", function()
+            local bufnr, file = setup_review_buffer(fixtures.change_hunk_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            -- Insert a line at the beginning of the buffer
+            vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { "inserted line" })
+
+            -- Extmark should still exist (extmarks move with text)
+            local extmarks = helpers.get_extmarks(bufnr, "nr_virtual")
+            assert.are.equal(1, #extmarks)
+            -- Row should now be 3 (was 2, moved down by 1)
+            local row = extmarks[1][2]
+            assert.are.equal(3, row)
+        end)
+
+        it("anchors DELETE-only hunk virtual lines to line above deletion", function()
+            local bufnr, file = setup_review_buffer(fixtures.delete_only_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            local extmarks = helpers.get_extmarks(bufnr, "nr_virtual")
+            assert.are.equal(1, #extmarks)
+            -- Extmark should be at row 1 (deleted_at[1]=3, anchor=3-1=2, row=2-1=1)
+            local row = extmarks[1][2]
+            assert.are.equal(1, row)
+        end)
+
+        it("DELETE-only hunk extmarks survive line insertions above anchor", function()
+            local bufnr, file = setup_review_buffer(fixtures.delete_only_pr)
+            local hunk = file.hunks[1]
+
+            virtual.expand(bufnr, hunk, file.path)
+
+            -- Insert a line at the beginning of the buffer
+            vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { "inserted line" })
+
+            -- Extmark should still exist (extmarks move with text)
+            local extmarks = helpers.get_extmarks(bufnr, "nr_virtual")
+            assert.are.equal(1, #extmarks)
+            -- Row should now be 2 (was 1, moved down by 1)
+            local row = extmarks[1][2]
+            assert.are.equal(2, row)
+        end)
+    end)
 end)

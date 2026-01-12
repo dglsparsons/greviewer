@@ -539,4 +539,80 @@ M.multiline_suggestion_pr = {
     },
 }
 
+M.delete_only_pr = {
+    pr = {
+        number = 1100,
+        title = "Delete only PR",
+        body = "PR with DELETE-only hunks",
+        state = "open",
+        author = "testuser",
+    },
+    files = {
+        {
+            path = "deleted_lines.lua",
+            status = "modified",
+            additions = 0,
+            deletions = 3,
+            content = table.concat({
+                "line 1",
+                "line 2",
+                "line 3",
+                "line 4",
+                "line 5",
+            }, "\n"),
+            hunks = {
+                {
+                    start = 3,
+                    count = 0,
+                    hunk_type = "delete",
+                    old_lines = { "deleted line A", "deleted line B", "deleted line C" },
+                    added_lines = {},
+                    deleted_at = { 3, 3, 3 },
+                    deleted_old_lines = { 3, 4, 5 },
+                },
+            },
+        },
+    },
+    comments = {},
+}
+
+M.change_hunk_pr = {
+    pr = {
+        number = 1101,
+        title = "Change hunk PR",
+        body = "PR with CHANGE hunks for anchoring tests",
+        state = "open",
+        author = "testuser",
+    },
+    files = {
+        {
+            path = "changed_file.lua",
+            status = "modified",
+            additions = 2,
+            deletions = 2,
+            content = table.concat({
+                "line 1",
+                "line 2",
+                "new line 3",
+                "new line 4",
+                "line 5",
+                "line 6",
+                "line 7",
+            }, "\n"),
+            hunks = {
+                {
+                    start = 3,
+                    count = 2,
+                    hunk_type = "change",
+                    old_lines = { "old line 3", "old line 4" },
+                    added_lines = { 3, 4 },
+                    deleted_at = { 3, 3 },
+                    deleted_old_lines = { 3, 4 },
+                },
+            },
+        },
+    },
+    comments = {},
+}
+
 return M

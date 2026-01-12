@@ -1,7 +1,8 @@
 local state = require("neo_reviewer.state")
 
 ---@class NRDeletionGroup
----@field position integer Line position where deletion occurred
+---@field position integer Original line position where deletion occurred (from deleted_at)
+---@field anchor_line integer Line number to anchor the extmark to
 ---@field lines string[] Deleted line contents
 
 ---@class NRVirtualModule
@@ -13,12 +14,19 @@ local function define_highlights()
     vim.api.nvim_set_hl(0, "NRVirtualDelete", { fg = "#e06c75", bg = "#3b2d2d", default = true })
 end
 
+---Groups deleted lines by their position and determines the best anchor point.
+---
+---For CHANGE hunks: anchors to the first added line (stable content anchor)
+---For DELETE-only hunks: anchors to the line above the deletion (stable neighbor anchor)
 ---@param hunk NRHunk
 ---@return NRDeletionGroup[]
-local function group_deletions_by_position(hunk)
+local function group_deletions_with_anchors(hunk)
     if not hunk.deleted_at or #hunk.deleted_at == 0 then
         return {}
     end
+
+    local is_delete_only = hunk.hunk_type == "delete"
+    local first_added = hunk.added_lines and hunk.added_lines[1]
 
     ---@type NRDeletionGroup[]
     local groups = {}
@@ -31,7 +39,21 @@ local function group_deletions_by_position(hunk)
         if current_group and current_group.position == pos then
             table.insert(current_group.lines, old_line)
         else
-            current_group = { position = pos, lines = { old_line } }
+            local anchor
+            if is_delete_only then
+                -- Anchor to the line above the deletion for stability
+                -- (the line above is existing content less likely to be deleted)
+                anchor = math.max(pos - 1, 1)
+            else
+                -- For CHANGE hunks, anchor to the first added line
+                anchor = first_added or pos
+            end
+
+            current_group = {
+                position = pos,
+                anchor_line = anchor,
+                lines = { old_line },
+            }
             table.insert(groups, current_group)
         end
     end
@@ -102,7 +124,7 @@ end
 ---@param hunk NRHunk
 ---@param file_path string
 function M.expand(bufnr, hunk, file_path)
-    local groups = group_deletions_by_position(hunk)
+    local groups = group_deletions_with_anchors(hunk)
 
     if #groups == 0 then
         return
@@ -122,7 +144,10 @@ function M.expand(bufnr, hunk, file_path)
             })
         end
 
-        local row = math.max(group.position - 1, 0)
+        -- Use anchor_line for positioning:
+        -- - CHANGE hunks: first added line (stable content anchor)
+        -- - DELETE-only hunks: line above deletion (stable neighbor anchor)
+        local row = math.max(group.anchor_line - 1, 0)
         if row >= line_count then
             row = line_count - 1
         end
