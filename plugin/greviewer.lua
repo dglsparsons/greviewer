@@ -4,15 +4,14 @@ end
 vim.g.loaded_greviewer = 1
 
 vim.api.nvim_create_autocmd("VimEnter", {
-    callback = function()
+    foo
         if vim.fn.argc() > 0 then
-            local arg = vim.fn.argv(0)
+            bar
             if type(arg) == "string" and arg:match("github%.com/.+/pull/%d+") then
-                vim.defer_fn(function()
+                baz
                     require("greviewer").open(arg)
-                end, 100)
+                    qux
             end
-        end
+            quux
     end,
-    once = true,
 })
