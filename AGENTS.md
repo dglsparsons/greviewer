@@ -81,13 +81,18 @@ Tests use plenary.nvim. Mock data in `tests/fixtures/mock_pr_data.lua`. Helpers 
 
 Test buffers don't have real file paths - navigation code checks `nr_file` buffer variable for file matching.
 
-**When changing logic, always consider:**
-- Do existing tests cover the changed code paths?
-- Are new tests needed for new functionality?
-- Do fixtures need updating for new data structures?
-- Run `make test` to verify changes don't break existing tests
+**ALWAYS write tests for new functionality.** This is not optional. When adding new functions, commands, or features:
+1. Create a new `*_spec.lua` file or add to an existing one
+2. Test validation/error cases (invalid inputs, missing state, edge cases)
+3. Test the happy path behavior
+4. Use stubs/mocks for external dependencies (CLI calls, vim APIs where needed)
 
-If tests pass without modification after significant logic changes, that's a red flag - the new code paths likely aren't covered.
+**When changing existing logic:**
+- Verify existing tests still pass
+- Add tests for any new code paths
+- Update fixtures if data structures changed
+
+Run `make test` before considering any change complete. If tests pass without modification after significant logic changes, that's a red flag - the new code paths likely aren't covered.
 
 ## Documentation
 
@@ -112,6 +117,16 @@ Keep the docs in sync with `lua/neo_reviewer/init.lua` (commands/functions) and 
 - `fmt` - Rust formatting
 - `lua-lint` - lua-language-server diagnostics
 - `lua-fmt` - stylua formatting
+
+**Run `nix flake check` before considering any change complete.** All checks MUST pass. This includes:
+- Zero Lua diagnostics (warnings are errors)
+- Zero Clippy warnings
+- Properly formatted code
+
+If diagnostics fail, fix them before moving on. Common Lua diagnostic fixes:
+- `need-check-nil`: Add nil guards (e.g., `value or {}`, `if value then`)
+- `undefined-field`: Add missing fields to type stubs in `lua/stubs/`
+- `redundant-parameter`: Check function signature matches usage
 
 ### CI
 

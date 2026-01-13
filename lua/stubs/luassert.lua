@@ -2,6 +2,7 @@
 
 ---@class luassert.stub_return
 ---@field was_called fun(times: integer): nil
+---@field was_called_with fun(...): nil
 ---@field was_not_called fun(): nil
 
 ---@class luassert.comparators
@@ -9,7 +10,7 @@
 ---@field same fun(expected: any, actual: any): nil
 
 ---@class luassert
----@field is_true fun(value: any): nil
+---@field is_true fun(value: any, message?: string): nil
 ---@field is_false fun(value: any): nil
 ---@field is_nil fun(value: any): nil
 ---@field is_not_nil fun(value: any): nil
