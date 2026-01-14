@@ -1,3 +1,16 @@
+---@alias NRAICategory "foundation"|"core"|"integration"|"support"|"test"|"peripheral"
+
+---@class NRAIHunk
+---@field file string File path
+---@field hunk_index integer 0-based index into the file's hunks array
+---@field confidence integer Confidence level 1-5
+---@field category NRAICategory Category of the change
+---@field summary string|nil Optional summary, omitted for trivial changes
+
+---@class NRAIAnalysis
+---@field goal string AI's understanding of PR purpose
+---@field hunk_order NRAIHunk[] Hunks in AI-suggested review order
+
 ---@alias NRHunkType "add"|"delete"|"change"
 
 ---@class NRHunk
@@ -22,6 +35,7 @@
 ---@field number integer PR number
 ---@field title string PR title
 ---@field author? string PR author username
+---@field description? string PR description body
 
 ---@alias NRCommentSide "LEFT"|"RIGHT"
 
@@ -57,6 +71,7 @@
 ---@field autocmd_id? integer Autocmd ID for buffer events
 ---@field overlays_visible boolean Whether overlays are currently shown
 ---@field show_old_code? boolean Whether to show old code in virtual lines
+---@field ai_analysis? NRAIAnalysis AI analysis results (nil if not run)
 
 ---@class NRReviewData
 ---@field pr NRPR PR metadata
@@ -203,9 +218,11 @@ function M.clear_review()
                 local signs = require("neo_reviewer.ui.signs")
                 local virtual = require("neo_reviewer.ui.virtual")
                 local comments = require("neo_reviewer.ui.comments")
+                local ai_ui = require("neo_reviewer.ui.ai")
                 signs.clear(bufnr)
                 virtual.clear(bufnr)
                 comments.clear(bufnr)
+                ai_ui.clear(bufnr)
             end
         end
     end
@@ -311,12 +328,14 @@ function M.hide_overlays()
     local signs = require("neo_reviewer.ui.signs")
     local virtual = require("neo_reviewer.ui.virtual")
     local comments = require("neo_reviewer.ui.comments")
+    local ai_ui = require("neo_reviewer.ui.ai")
 
     for bufnr, _ in pairs(state.active_review.applied_buffers) do
         if vim.api.nvim_buf_is_valid(bufnr) then
             signs.clear(bufnr)
             virtual.clear(bufnr)
             comments.clear(bufnr)
+            ai_ui.clear(bufnr)
         end
     end
 
@@ -342,6 +361,21 @@ end
 function M.set_show_old_code(show)
     if state.active_review then
         state.active_review.show_old_code = show
+    end
+end
+
+---@return NRAIAnalysis|nil
+function M.get_ai_analysis()
+    if state.active_review then
+        return state.active_review.ai_analysis
+    end
+    return nil
+end
+
+---@param analysis NRAIAnalysis
+function M.set_ai_analysis(analysis)
+    if state.active_review then
+        state.active_review.ai_analysis = analysis
     end
 end
 
