@@ -174,10 +174,6 @@ function M.show_details()
 
     local bufnr = vim.api.nvim_get_current_buf()
     local ai_hunk = M.get_annotation_at_cursor(bufnr)
-    if not ai_hunk then
-        vim.notify("No AI annotation at cursor", vim.log.levels.INFO)
-        return
-    end
 
     local lines = {}
     local max_width = 60
@@ -206,8 +202,8 @@ function M.show_details()
         end
     end
 
-    -- Skip hunk-specific section for trivial hunks (5/5 with no context)
-    if ai_hunk.confidence ~= 5 or ai_hunk.context then
+    -- Show hunk-specific section only when cursor is on a hunk with non-trivial info
+    if ai_hunk and (ai_hunk.confidence ~= 5 or ai_hunk.context) then
         table.insert(lines, "")
         table.insert(lines, "")
         table.insert(lines, string.format("── This Change: %d/5 ──", ai_hunk.confidence))

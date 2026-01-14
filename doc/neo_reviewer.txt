@@ -127,8 +127,9 @@ ai ~
     - Category: foundation, core, integration, support, test, peripheral
     - Summary: Why this change helps achieve the PR's goal
 
-    Virtual text shows annotations at hunk starts. Use |:ReviewAI| to see
-    full analysis details in a floating window.
+    Virtual text shows annotations at hunk starts. Use
+    |neo_reviewer.toggle_ai_feedback()| to see full analysis details in a
+    floating window.
 
 ==============================================================================
 5. COMMANDS                                              *neo_reviewer-commands*
@@ -183,17 +184,6 @@ These user commands are created when you call `setup()`.
     Sync the current PR review with GitHub. Fetches the latest comments
     and diff changes. Preserves cursor position and expanded hunk state.
     Only works during an active PR review (not local diff reviews).
-
-:ReviewAI                                                            *:ReviewAI*
-    Show AI analysis details for the hunk at cursor position in a floating
-    window. Displays:
-    - PR goal (AI's understanding of the PR's purpose)
-    - Category (foundation, core, integration, support, test, peripheral)
-    - Confidence level with visual bar
-    - Summary explaining the change's role in the PR
-    - Current position in AI-ordered hunk navigation
-
-    Only available when AI analysis has been run (see |:ReviewPR|).
 
 ==============================================================================
 6. FUNCTIONS                                            *neo_reviewer-functions*
@@ -309,10 +299,10 @@ require("neo_reviewer").sync()                                   *neo_reviewer.s
     state, and checkout state. Only works during an active PR review.
     See |:ReviewSync|.
 
-require("neo_reviewer").show_ai_details()               *neo_reviewer.show_ai_details()*
+require("neo_reviewer").toggle_ai_feedback()     *neo_reviewer.toggle_ai_feedback()*
     Show AI analysis details for the hunk at cursor position. Opens a
-    floating window with the PR goal, hunk category, confidence level,
-    and summary. See |:ReviewAI|.
+    floating window with the PR goal, confidence level, abstraction
+    changes, and commentary on the current hunk.
 
 ==============================================================================
 7. KEYMAPS                                                *neo_reviewer-keymaps*
@@ -370,7 +360,7 @@ neo-reviewer does not set any keymaps by default. Add your own: >lua
     end, { desc = "Sync PR review" })
 
     vim.keymap.set("n", "<leader>ci", function()
-        require("neo_reviewer").show_ai_details()
+        require("neo_reviewer").toggle_ai_feedback()
     end, { desc = "Show AI analysis" })
 <
 

@@ -75,10 +75,6 @@ function M.setup(opts)
     vim.api.nvim_create_user_command("ReviewSync", function()
         M.sync()
     end, { desc = "Sync PR review with GitHub" })
-
-    vim.api.nvim_create_user_command("ReviewAI", function()
-        M.show_ai_details()
-    end, { desc = "Show AI analysis details for current hunk" })
 end
 
 ---@param url_or_number? string|integer
@@ -597,7 +593,7 @@ function M.show_comment()
     comments.show_thread()
 end
 
-function M.show_ai_details()
+function M.toggle_ai_feedback()
     local ai_ui = require("neo_reviewer.ui.ai")
     ai_ui.show_details()
 end
