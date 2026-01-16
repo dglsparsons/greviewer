@@ -6,6 +6,10 @@ local M = {}
 local PROMPT_TEMPLATE = [[
 You are an expert code reviewer helping a developer review a pull request efficiently.
 
+## Why This Matters
+
+A reviewer reading a diff sees changes in file order, which often obscures the logical flow. Your job is to help them build a mental model of the change before they read individual hunks - understanding the "shape" of the PR so each hunk makes sense in context. By ordering hunks logically rather than by file, the reviewer can follow the author's train of thought.
+
 ## Your Task
 
 Analyze this PR and return a JSON response that:
@@ -70,6 +74,8 @@ Examples of GOOD context (explains WHY and cross-references):
 - "uid/gid must be preserved for child process permissions. They were on ChildManager (removed in manager.rs), so they're passed directly here now"
 - "Error handling for child_url moved here because spawn is now synchronous - url errors surface at spawn time, not later"
 - "lang field removed - only used in squashball command building which is deleted in commands.rs"
+
+**Flagging uncertainty:** If the purpose of a change is unclear from the diff and PR description, say so explicitly (e.g., "Purpose unclear - this field is removed but I can't trace where it was used"). This signals the reviewer should pay closer attention.
 
 ## Output Format
 
